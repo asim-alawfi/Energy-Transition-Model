@@ -1,0 +1,125 @@
+clear;
+base=[pwd(),filesep(),'..',filesep(),'DDE_Biftool_Nov2025',filesep()];
+ddebiftool_path(base,'sym');
+%   base=[pwd(),filesep(),'..',filesep(),'DDE_Biftool_Nov2025',filesep()];
+% addpath([base,filesep,'ddebiftool'],...
+%     [base,filesep,'ddebiftool_extra_psol'],...
+%     [base,filesep,'ddebiftool_utilities'],...
+%     [base,filesep,'ddebiftool_extra_rotsym'],...
+%     [base,filesep,'ddebiftool_extra_nmfm'],...
+%     [base,filesep,'ddebiftool_extra_symbolic'],...
+%     [base,filesep,'ddebiftool_coco']);
+format compact
+format short 
+%%
+K=270; E0=450; a=70; c= 1.8e-3; e=1.3e-3;
+parnames = {'alpha','b','gamma','d','ku','beta','tau_delay'};
+cind = [parnames; num2cell(1:length(parnames))];
+in = struct(cind{:});
+par([in.alpha,      in.b,       in.gamma,            in.d,         in.ku,      in.beta     in.tau_delay])=... 
+    [a/E0,            0.5,         0+c*E0,             0.2,          K/E0,         e*E0       0  ];
+ndim=2;
+x0=[1;0]%zeros(ndim,1);
+    parbd={'min_bound',[in.gamma, 0;      in.beta,0.0;   in.b,0],...
+           'max_bound',[in.gamma, 2;      in.beta, 3;    in.b,2],...
+            'max_step',[in.gamma, 0.05;  in.beta, 0.02; in.b, 0.01; 0,0.1]};
+%%
+funcs=set_symfuncs(@sym_energy,'sys_tau',@()[]);
+%%
+[eq_branch1,suc0]=SetupStst(funcs,...
+    'parameter',par,'x',x0,...
+    'contpar',in.gamma,'step',0.1,parbd{:});
+figure(1)
+clf; hold on
+eq_branch1=br_contn(funcs,eq_branch1,400);
+eq_branch1=br_rvers(eq_branch1);
+eq_branch1=br_contn(funcs,eq_branch1,100);
+[eq_branch1,nunst_st]=br_stabl(funcs,eq_branch1,0,0);
+%% plot stability
+xpar_br1=arrayfun(@(x)x.parameter(in.gamma),eq_branch1.point);
+ypar_br1=arrayfun(@(x)x.x(1),eq_branch1.point);
+biflocation=find(diff(nunst_st));%find((nunst_st>0),1,'last');
+%p1=eq_1234_0.point(biflocation);
+%
+% Extract stability information and plot results
+figure(1);
+clf
+hold on 
+plot(xpar_br1(nunst_st==0), ypar_br1(nunst_st==0), 'k.','Linewidth',2,'MarkerSize',10);
+plot(xpar_br1(nunst_st==1), ypar_br1(nunst_st==1), 'r.','Linewidth',2,'MarkerSize',10);
+plot(xpar_br1(nunst_st>=2), ypar_br1(nunst_st>=2), 'g.','Linewidth',2,'MarkerSize',10);
+plot(xpar_br1(biflocation), ypar_br1(biflocation), 'r.','Linewidth',2,'MarkerSize',40);
+xlabel('sigma');
+ylabel('y_{1}');
+title('Stability Analysis of Equilibria');
+%%
+pt=eq_branch1.point(end-3);
+Fode45=@(t,X)funcs.wrap_rhs(X,pt.parameter);
+rng(1)
+simulode45=ode45(Fode45,[0,1000],pt.x+0.01*rand(length(pt.x),1));
+%
+figure(88)
+clf;
+hold on
+plot(simulode45.x,simulode45.y,'LineWidth',2)
+%%
+
+% [ffuncs,sts_fold,suc]=SetupFold(funcs,eq_1234_0,biflocation,...
+%     'contpar',[in.sigma,in.a],...
+%     'dir',in.sigma,'step',0.01,'print_residual_info',1,'outputfuncs',true)%'norm',false)
+% figure(5)
+% clf; hold on
+% sts_fold=br_contn(ffuncs,sts_fold,80);
+
+%%
+  % parbd={'min_bound',[in.sigma, 0;  in.mu_n,0.0; in.a,0],...
+  %   'max_bound',   [in.sigma, 1.5;     in.mu_n, 2.5; in.a,1],...
+  %   'max_step',    [in.sigma, 0.05;   in.mu_n, 0.02; in.a, 0.01; 0,0.05]};
+[eq_branch2,suc2]=SetupStst(funcs,...
+    'parameter',pt.parameter,'x',simulode45.y(:,end),...
+    'contpar',in.gamma,'step',0.1,parbd{:});
+figure(1)
+hold on
+eq_branch2=br_contn(funcs,eq_branch2,1000);
+eq_branch2=br_rvers(eq_branch2);
+eq_branch2=br_contn(funcs,eq_branch2,300);
+[eq_branch2,nunst_st2]=br_stabl(funcs,eq_branch2,0,0);
+%% plot stability
+xpar_br2=arrayfun(@(x)x.parameter(in.gamma),eq_branch2.point);
+ypar_br2=arrayfun(@(x)x.x(1),eq_branch2.point);
+biflocation2=find(diff(nunst_st2));%find((nunst_st>0),1,'last');
+%p1=eq_1234_0.point(biflocation);
+%%
+% Extract stability information and plot results
+figure(1);
+% clf
+hold on 
+plot(xpar_br2(nunst_st2==0), ypar_br2(nunst_st2==0), 'k.','Linewidth',2,'MarkerSize',10);
+plot(xpar_br2(nunst_st2==1), ypar_br2(nunst_st2==1), 'r.','Linewidth',2,'MarkerSize',10);
+plot(xpar_br2(nunst_st2>=2), ypar_br2(nunst_st2>=2), 'g.','Linewidth',2,'MarkerSize',10);
+plot(xpar_br2(biflocation), ypar_br2(biflocation2), 'r.','Linewidth',2,'MarkerSize',40);
+xlabel('sigma');
+ylabel('y_{1}');
+title('Stability Analysis of Equilibria');
+%%
+pt2=eq_branch1.point(5);
+Fode45=@(t,X)funcs.wrap_rhs(X,pt2.parameter);
+rng(3)
+simulode45_2=ode45(Fode45,[0,2000],pt2.x+0.02*rand(length(pt2.x),1));
+%
+figure(88)
+clf;
+hold on
+plot(simulode45_2.x,simulode45_2.y,'LineWidth',2)
+%plot(xpar_1234(biflocation), ypar_1234(biflocation), 'r.','Linewidth',2,'MarkerSize',20
+%%
+[eq_branch3,suc3]=SetupStst(funcs,...
+    'parameter',pt2.parameter,'x',simulode45_2.y(:,end),...
+    'contpar',in.gamma,'step',0.1,parbd{:});
+figure(1)
+hold on
+eq_branch3=br_contn(funcs,eq_branch3,1000);
+eq_branch3=br_rvers(eq_branch3);
+eq_branch3=br_contn(funcs,eq_branch3,300);
+[eq_branch3,nunst_st3]=br_stabl(funcs,eq_branch3,0,0);
+biflocation3=find(diff(nunst_st3))%find((nunst_st>0),1,'last');

@@ -1,0 +1,54 @@
+%clear; clc;
+
+% --- Parameter names and indices
+% parnames = {'a','lambda','sigma','mu_n','mu_r','k','tau_delay'};
+% cind = [parnames; num2cell(1:numel(parnames))];
+% in = struct(cind{:});
+% 
+% % --- Parameter vector
+% par = zeros(1, numel(parnames));
+% 
+% par([ in.a, in.lambda, in.sigma, in.mu_n, in.mu_r, in.k, in.tau_delay ]) = ...
+%     [ 0.35,  0.15,     2.00,     0.30,    0.60,   0.90, 3.00 ];
+
+% --- DDE settings
+lags = par(in.tau_delay);
+%%
+tspan = [0 30000];
+pt=eq_branch1.point(biflocation(1)+3);
+inc=[pt.x]
+% Constant history on [-tau,0]
+% N0 = 0.8;
+% R0 = 0.1;
+rng(2);
+history = @(t) inc(:,1)+0.01*rand(length(pt.x),1)%inc(:,1) ;
+
+% --- Solve
+rhs = @(t,y,Z)rhs_dde23_enrgy(t,y,Z,pt.parameter);
+sol = dde23(rhs, lags, history, tspan);
+% --- Evaluate solution on a fine grid
+t = linspace(tspan(1), tspan(2), 200000);
+Y = deval(sol, t);
+N = Y(1,:);
+R = Y(2,:);
+
+%--- Plot time series
+figure(9);
+clf; hold on
+plot(sol.x, sol.y(1,:), 'LineWidth', 1.5); hold on;
+plot(sol.x, sol.y(2,:), 'LineWidth', 1.5);
+xlabel('t'); ylabel('State');
+legend('N(t)','R(t)');
+grid on;
+
+% --- Phase portrait
+% figure(10);
+% clf; hold on
+% plot(N, R, 'LineWidth', 1.5);
+% plot(inc(1,1),inc(2,1),'.','Color','k','MarkerSize',20)
+% xlabel('N'); ylabel('R');
+% grid on;
+
+% --- Basic sanity checks
+fprintf('Min N: %.6g, Min R: %.6g\n', min(N), min(R));
+fprintf('Max N: %.6g, Max R: %.6g\n', max(N), max(R));

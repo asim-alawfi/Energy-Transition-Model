@@ -1,0 +1,26 @@
+clear;
+base=[pwd(),filesep(),'..',filesep(),'DDE_Biftool_Nov2025',filesep()];
+ddebiftool_path(base,'sym');%[getenv('HOME'),'/sourceforge-ddebiftool/releases/git-2023-06-27'],'sym');
+%%
+format compact
+format short g
+%%
+%% Define parameters
+parnames = {'a','lambda','sigma' ,'mu_n','mu_r','k','tau_delay'};
+cind = [parnames; num2cell(1:length(parnames))];
+in = struct(cind{:});
+syms(parnames{:});
+par = sym(parnames);
+%% Symbolic setup
+[dim,nstrains,ntau]=deal(2,1,1);
+N = sym('N', [nstrains, ntau+1]);  % non-renewable enrgy
+R = sym('R', [nstrains, ntau+1]);  % renewable enrgy
+%% 
+dNdt= N(1) .* ( lambda .* (1 - (N(1) + R1)./k) - mu_n )- sigma .* N(1) .* R2;                                        %Lambda.*((1-w)+(1-gamma).*(w-R))-N; %% need to check the term gamma*w or just gamma
+dRdt = R1 .* ( a .* (1 - (N(1) + R1)./k) - mu_r )+ sigma .* N(1) .* R(2);%Lambda.*(1-R)-e*R;
+%%
+[fstr,erives]=dde_sym2funcs([dNdt;dRdt],[N;R],par,'filename','sym_energy_E_version2',...
+    'maxorder',2,'directional_derivative',true);
+%%
+
+
