@@ -160,10 +160,10 @@ plot(kh1_x, tauh1_y,'k-','LineWidth',2.5)
 % baseline point (k, tau_c) = (1.6, 2.41)
 plot(1.6, 2.41,'o','MarkerSize',7,'MarkerFaceColor',navy,...
      'MarkerEdgeColor',navy,'HandleVisibility','off')
-text(1.05, 4.6,'baseline','Color',navy,'FontSize',12)
-text(1.05, 3.9,'$(k,\tau_c)=(1.6,\,2.41)$','Color',navy,...
+text(1.5, 3.9,'baseline','Color',navy,'FontSize',12)
+text(1.5, 3.0,'$(k,\tau_c)=(1.6,\,2.41)$','Color',navy,...
      'FontSize',12,'Interpreter','latex')
-annotation('arrow',[0.36 0.44],[0.36 0.30],'Color',navy)  % adjust to taste
+%annotation('arrow',[0.36 0.44],[0.36 0.30],'Color',navy)  % adjust to taste
 
 % codim-2 marker where the curve meets tau = 0 (k ~ 3.3)
 plot(kh1_x(end), tauh1_y(end),'s','MarkerSize',9,...
@@ -173,9 +173,9 @@ text(2.62, 1.05,'(Hopf meets $\tau=0$)','Color',teal,...
      'FontSize',12,'Interpreter','latex')
 
 % region labels
-text(0.95, 9.5,{'stable steady transition','(below Hopf curve)'},...
+text(0.6, 2,{'stable steady transition','region'},...
      'Color',navy,'FontSize',12)
-text(2.35, 5.0,{'oscillatory','transition','(above)'},...
+text(2.35, 8.0,{'oscillatory transition','region'},...
      'Color',teal,'FontSize',12,'HorizontalAlignment','center')
 
 xlabel('effective nonrenewable capacity $k$','FontSize',16,'Interpreter','latex')
@@ -226,3 +226,73 @@ legend({'stable equilibrium','unstable equilibrium'},...
        'FontSize',12,'Location','east')
 
 exportgraphics(gcf,'fig_hopf_1param.pdf','ContentType','vector')
+
+%%
+[~,it]=min(abs(xpar_br1- 4))
+pi=eq_branch1_with_stab.point(it)
+fun_sim=@(t,X,Ch)funcs.wrap_rhs(cat(2,X,Ch),pi.parameter);
+his=@(t)dde_coll_eva(pi.profile,pi.mesh,1+t/pi.period,pi.degree);
+lags=pi.parameter(in.tau);
+rng(1)
+sol23_test=dde23(fun_sim,lags,pi.x+0.03*rand(3,1),[0,10000], ddeset('RelTol',1e-5,'AbsTol',1e-5));
+%%%%%
+[~,it2]=min(abs(xpar_br1- 1.4))
+pi2=eq_branch1_with_stab.point(it2)
+fun_sim2=@(t,X,Ch)funcs.wrap_rhs(cat(2,X,Ch),pi2.parameter);
+lags2=pi2.parameter(in.tau);
+rng(2)
+sol23_test2=dde23(fun_sim2,lags2,pi.x+0.03*rand(3,1),[0,10000], ddeset('RelTol',1e-5,'AbsTol',1e-5));
+figure
+plot(sol23_test2.x,sol23_test2.y,'LineWidth',2);
+%%
+%% ---- simulations (yours, cleaned) --------------------------------------
+[~,it]  = min(abs(xpar_br1 - 4));
+pt      = eq_branch1_with_stab.point(it);
+fun_sim = @(t,X,Ch) funcs.wrap_rhs(cat(2,X,Ch), pt.parameter);
+lags    = pt.parameter(in.tau);
+rng(1)
+sol_osc = dde23(fun_sim, lags, pt.x + 0.03*rand(3,1), [0,10000], ...
+                ddeset('RelTol',1e-5,'AbsTol',1e-5));
+
+[~,it2]  = min(abs(xpar_br1 - 1.4));
+pt2      = eq_branch1_with_stab.point(it2);
+fun_sim2 = @(t,X,Ch) funcs.wrap_rhs(cat(2,X,Ch), pt2.parameter);
+lags2    = pt2.parameter(in.tau);
+rng(2)
+sol_std  = dde23(fun_sim2, lags2, pt2.x + 0.03*rand(3,1), [0,10000], ...
+                 ddeset('RelTol',1e-5,'AbsTol',1e-5));
+
+%% ---- two-panel figure in the paper's style -----------------------------
+teal = [0 0.43 0.43];  navy = [0.08 0.16 0.35];
+
+figure('Units','centimeters','Position',[2 2 26 9])
+tl = tiledlayout(1,2,'TileSpacing','compact','Padding','compact');
+
+% (a) steady transition, tau = 1.4 < tau_c
+nexttile
+hold on
+plot(sol_std.x, sol_std.y(1,:), 'k-', 'LineWidth',1.6)
+plot(sol_std.x, sol_std.y(2,:), '-',  'Color',teal, 'LineWidth',1.6)
+plot(sol_std.x, sol_std.y(3,:), '--', 'Color',navy, 'LineWidth',1.3)
+yline(pt2.x(1), 'k:',            'LineWidth',0.7, 'Alpha',0.7)  % E* guides
+yline(pt2.x(2), ':', 'Color',teal,'LineWidth',0.7, 'Alpha',0.7)
+xlabel('$t$ (years)','Interpreter','latex','FontSize',13)
+ylabel('normalized state','FontSize',13)
+title('(a) $\tau=1.4<\tau_c$: steady transition', ...
+      'Interpreter','latex','FontSize',12,'FontWeight','normal')
+xlim([0 10000]); set(gca,'FontSize',11); box on
+legend({'$N$','$R$','$C$'},'Interpreter','latex', ...
+       'FontSize',11,'Location','northeast')
+
+% (b) oscillatory transition, tau = 4.0 > tau_c
+nexttile
+hold on
+plot(sol_osc.x, sol_osc.y(1,:), 'k-', 'LineWidth',1.6)
+plot(sol_osc.x, sol_osc.y(2,:), '-',  'Color',teal, 'LineWidth',1.6)
+plot(sol_osc.x, sol_osc.y(3,:), '--', 'Color',navy, 'LineWidth',1.3)
+xlabel('$t$ (years)','Interpreter','latex','FontSize',13)
+title('(b) $\tau=4.0>\tau_c$: oscillatory transition', ...
+      'Interpreter','latex','FontSize',12,'FontWeight','normal')
+xlim([0 10000]); ylim([0 0.6]); set(gca,'FontSize',11); box on
+
+exportgraphics(gcf,'fig_timeseries.pdf','ContentType','vector')
